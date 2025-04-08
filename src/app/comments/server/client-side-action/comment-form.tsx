@@ -2,29 +2,27 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useUser } from "@/lib/auth";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { createComment } from "./actions";
 
 export default function CommentForm() {
   const [input, setInput] = useState("");
-  const [isPending, setIsPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const { user } = useUser();
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    try {
-      setIsPending(true);
-      await createComment(input, user);
-      setInput("");
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setIsPending(false);
-    }
+    startTransition(async () => {
+      const response = await createComment({ text: input });
+      if (response?.error) {
+        setError(response.error);
+        return;
+      }
+      startTransition(() => {
+        setInput("");
+      });
+    });
   }
 
   return (
